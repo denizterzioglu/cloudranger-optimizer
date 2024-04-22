@@ -129,7 +129,6 @@ Predict for our test set
 
 ```{r}
 Ranger_pred = getPredictionResponse(predict(Ranger_model, newdata = x_test))
-Ranger_pred
 ```
 
 ```{r}
