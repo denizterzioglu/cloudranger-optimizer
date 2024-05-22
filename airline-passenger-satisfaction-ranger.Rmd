@@ -20,6 +20,8 @@ ptm <- proc.time()
 library(ranger)
 library(mlr)
 library(caret)
+library(ggplot2)
+library(plotly)
 ```
 
 ## Data Loading and Preprocessing
@@ -44,6 +46,12 @@ data <- data %>%
   select(-id)
 ```
 
+Reporting the amount of missing data
+```{r}
+# Anzahl der NA-Werte in der Spalte 'Arrival.Delay.in.Minutes' vor der Mutation
+na_count <- sum(is.na(data$`Arrival.Delay.in.Minutes`))
+print(na_count)
+```
 Handling missing values
 
 ```{r}
@@ -67,6 +75,9 @@ data$satisfaction <- ifelse(data$satisfaction == 'neutral or dissatisfied', 1, 0
 data$satisfaction <- factor(data$satisfaction)
 train_data <- data
 ```
+
+
+
 
 Applying the same steps to test data
 
@@ -110,14 +121,53 @@ learner <- makeLearner("classif.ranger")
 
 # Choose resampling strategy and define grid
 rdesc <- makeResampleDesc("CV", iters = 5)
-ps <- makeParamSet(makeIntegerParam("mtry", 3, 4),
-                   makeDiscreteParam("num.trees", 200))
+ps <- makeParamSet(
+                   makeIntegerParam("mtry", lower = 3, upper = 4),
+                   makeDiscreteParam("num.trees", 200),
+                   makeDiscreteParam("respect.unordered.factors", values = c("ignore", "order", "partition"))
+                   #makeDiscreteParam("replace", values = c("TRUE" = TRUE, "FALSE" = FALSE))
+                   )
 
 # Tune
 res = tuneParams(learner, task, rdesc, par.set = ps,
            control = makeTuneControlGrid())
 
+```
+
+Tuning Ergebnisse visualisieren
+3 Hyperparameter
+```{r}
+# Ergebnisse extrahieren
+df <- as.data.frame(res$opt.path)
+
+# Scatterplot-Matrix mit Größe der Punkte basierend auf MME erstellen
+ggplot(df, aes(x = mtry, y = num.trees, color = respect.unordered.factors, size = mmce.test.mean)) +
+  geom_point() +
+  facet_grid(. ~ respect.unordered.factors) +
+  labs(title = "Hyperparameter Visualisierung",
+       x = "mtry", y = "num.trees",
+       color = "respect.unordered.factors",
+       size = "Mean Misclassification Error") +
+  theme_minimal()
+
+
+```
+
+Tuning Ergebnisse visualisieren
+2 Hyperparameter
+```{r}
+# Ergebnisse extrahieren
+df <- as.data.frame(res$opt.path)
+
+# Plot der Ergebnisse als interaktiver 3D-Plot
+plot_ly(data = df, x = ~mtry, y = ~num.trees, z = ~mmce.test.mean, type = "scatter3d", mode = "markers",
+        marker = list(size = 5, color = ~mmce.test.mean, colorscale = "Viridis")) %>%
+  layout(scene = list(xaxis = list(title = "mtry"), yaxis = list(title = "num.trees"), zaxis = list(title = "Mean Misclassification Error")))
+
+```
+
 # Train on  dataset (using best hyperparameters)
+```{r}
 lrn = setHyperPars(makeLearner("classif.ranger"), par.vals = res$x)
 Ranger_model = mlr::train(lrn, task)
 
@@ -129,6 +179,7 @@ Predict for our test set
 
 ```{r}
 Ranger_pred = getPredictionResponse(predict(Ranger_model, newdata = x_test))
+Ranger_pred
 ```
 
 ```{r}
@@ -145,6 +196,41 @@ Evaluating model performance
 acc_ranger <- confusionMatrix(Ranger_pred, y_test)$overall['Accuracy']
 acc_ranger
 ```
+```{r}
+precision_ranger <- confusionMatrix(Ranger_pred, y_test)$byClass['Precision']
+precision_ranger
+```
+```{r}
+recall <- confusionMatrix(Ranger_pred, y_test)$byClass['Recall']
+
+recall
+```
+
+```{r}
+f1_score <- confusionMatrix(Ranger_pred, y_test)$byClass['F1']
+f1_score
+```
+
+```{r}
+sensitivity <- confusionMatrix(Ranger_pred, y_test)$byClass['Sensitivity']
+sensitivity
+```
+
+```{r}
+specificity <- confusionMatrix(Ranger_pred, y_test)$byClass['Specificity']
+specificity
+```
+
+```{r}
+kappa <- confusionMatrix(Ranger_pred, y_test)$overall['Kappa']
+kappa
+```
+
+```{r}
+auc <- confusionMatrix(Ranger_pred, y_test)$byClass['AUC']
+auc
+```
+
 
 ## Conclusion
 
