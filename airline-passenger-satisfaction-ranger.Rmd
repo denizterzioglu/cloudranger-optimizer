@@ -110,12 +110,12 @@ learner <- makeLearner("classif.ranger")
 
 # Choose resampling strategy and define grid
 rdesc <- makeResampleDesc("CV", iters = 5)
-ps <- makeParamSet(makeIntegerParam("mtry", 3, 4),
-                   makeDiscreteParam("num.trees", 200))
+ps <- makeParamSet(makeIntegerParam("mtry", 1, 13),
+                   makeIntegerParam("num.trees", 10, 250))
 
 # Tune
 res = tuneParams(learner, task, rdesc, par.set = ps,
-           control = makeTuneControlGrid())
+           control = makeTuneControlRandom())
 
 # Train on  dataset (using best hyperparameters)
 lrn = setHyperPars(makeLearner("classif.ranger"), par.vals = res$x)
@@ -147,5 +147,3 @@ acc_ranger
 ```
 
 ## Conclusion
-
-You can copy this markdown content into a Jupyter notebook and execute it with the appropriate kernel (R kernel) to run the R code snippets. Let me know if you need further assistance!
