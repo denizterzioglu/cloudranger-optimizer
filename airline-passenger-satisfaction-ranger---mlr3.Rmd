@@ -2,6 +2,13 @@
 title: Airline Passenger Satisfaction Parameter Tuning
 output: html_document
 ---
+################################################################################
+################################################################################
+Zu Beginn müssen vermutlich alle Pakete installiert werden, welche im folgenden
+chunk auskommentiert sind.
+################################################################################
+################################################################################
+
 
 # Title: Airline Passenger Satisfaction Parameter Tuning
 
