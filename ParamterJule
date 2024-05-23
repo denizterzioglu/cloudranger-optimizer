@@ -1,0 +1,2 @@
+  ParamInt$new("max.depth", lower = 1, upper = 30), #Jule
+  ParamDbl$new("sample.fraction", lower = 0.1, upper = 1) # Jule
