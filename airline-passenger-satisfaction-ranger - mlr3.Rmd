@@ -28,10 +28,12 @@ In this notebook, we'll explore a dataset containing information about airline p
 #install.packages("ggplot2")
 #install.packages("plotly")
 #install.packages("mlr3misc")
+#install.packages("mlr3tuning")
 
 # Load libraries
 library(mlr3misc)
 library(mlr3verse)
+library(mlr3tuning)
 library(tidyverse)
 library(mlr3learners)
 library(paradox)
@@ -144,13 +146,13 @@ learner <- lrn("classif.ranger")
 
 # Define the parameter search space
 search_space <- ParamSet$new(params = list(
-  "max.depth" = ParamInt$new("max.depth", lower = 0, upper = 1), #Jule
-  "mtry" = ParamInt$new("mtry", lower = 3, upper = 4) #Deniz
-  #"num.trees" = ParamInt$new("num.trees", lower = 200, upper = 200), #Deniz
-  #"respect.unordered.factors" = ParamFct$new("respect.unordered.factors", levels = c("ignore", "order", "partition")), #Michael
-  #"replace" = ParamLgl$new("replace") #Michael
-  #"min.node.size" = ParamInt$new("min.node.size", lower = 1, upper = 100), #Maike
-  #"importance" = ParamFct$new("importance", levels = c("none", "permutation", "impurity")) #Maike
+  ParamInt$new("max.depth", lower = 0, upper = 1), #Jule
+  ParamInt$new("mtry", lower = 3, upper = 3) #Deniz
+  #ParamInt$new("num.trees", lower = 200, upper = 200), #Deniz
+  #ParamFct$new("respect.unordered.factors", levels = c("ignore", "order", "partition")), #Michael
+  #ParamLgl$new("replace"), #Michael
+  #ParamInt$new("min.node.size", lower = 1, upper = 100), #Maike
+  #ParamFct$new("importance", levels = c("none", "permutation", "impurity")) #Maike
 ))
 
 # Define the resampling strategy
@@ -171,7 +173,7 @@ tuner <- tnr("random_search")
 res <- tuner$optimize(instance)
 
 # Retrieve the results
-best_result <- res$x
+best_result <- as.list(res$x)
 best_score <- res$y
 
 # Print the best hyperparameters and their score
@@ -180,8 +182,11 @@ print(best_result)
 cat("Best score (accuracy):\n")
 print(best_score)
 
+# Convert best_result to a named list for the learner
+best_result_list <- as.list(setNames(best_result$value, best_result$param))
+
 # Train the model with the best hyperparameters
-learner$param_set$values <- best_result
+learner$param_set$values <- best_result_list
 Ranger_model <- learner$train(task)
 
 # Print the final trained learner
@@ -190,6 +195,9 @@ print(Ranger_model)
 # Additionally, print the learner's parameters to verify
 cat("Learner's parameters:\n")
 print(learner$param_set$values)
+
+# Print the execution time
+print(proc.time() - ptm)
 ```
 
 
@@ -204,15 +212,7 @@ df <- as.data.frame(res$opt.path)
 
 # Train on dataset (using best hyperparameters)
 # Bis hierhin getestet
-```{r}
-lrn <- makeLearner("classif.ranger")
-lrn <- set_hyperparameters(lrn, par.vals = res$x)
 
-Ranger_model <- mlr::train(lrn, task)
-
-print(Ranger_model)
-print(proc.time() - ptm)
-```
 
 Predict for our test set
 
