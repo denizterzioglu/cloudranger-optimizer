@@ -168,11 +168,11 @@ instance <- TuningInstanceSingleCrit$new(
 
 # Run the tuning
 tuner <- tnr("random_search")
-tuner$optimize(instance)
+res <- tuner$optimize(instance)
 
 # Retrieve the results
-best_result <- instance$result_learner_param_vals
-best_score <- instance$result_y
+best_result <- res$x
+best_score <- res$y
 
 # Print the best hyperparameters and their score
 cat("Best hyperparameters:\n")
@@ -182,10 +182,10 @@ print(best_score)
 
 # Train the model with the best hyperparameters
 learner$param_set$values <- best_result
-learner$train(task)
+Ranger_model <- learner$train(task)
 
 # Print the final trained learner
-print(learner)
+print(Ranger_model)
 
 # Additionally, print the learner's parameters to verify
 cat("Learner's parameters:\n")
