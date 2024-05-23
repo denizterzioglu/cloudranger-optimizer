@@ -210,7 +210,6 @@ df <- as.data.frame(res$opt.path)
 
 ```
 
-# Train on dataset (using best hyperparameters)
 # Bis hierhin getestet
 
 
