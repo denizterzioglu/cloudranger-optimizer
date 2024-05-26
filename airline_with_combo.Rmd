@@ -148,7 +148,8 @@ learner <- lrn("classif.ranger")
 
 # Liste der Parameter
 parameters <- list(
-  ParamInt$new("max.depth", lower = 0, upper = 1), #Jule
+  ParamInt$new("max.depth", lower = 1, upper = 30), #Jule
+  ParamDbl$new("sample.fraction", lower = 0.1, upper = 1), # Jule
   ParamInt$new("mtry", lower = 1, upper = 13), #Deniz
   ParamInt$new("num.trees", lower = 10, upper = 250), #Deniz
   ParamFct$new("respect.unordered.factors", levels = c("ignore", "order", "partition")), #Michael
@@ -160,13 +161,20 @@ parameters <- list(
 # Alle möglichen Kombinationen von Parameterpaaren erstellen
 param_pairs <- combn(parameters, 2, simplify = FALSE)
 
+# Define a seed for reproducibility
+seed <- 123
+
+# Leere Liste zum Speichern der Ergebnisse
+results_list <- list()
+
+
 # Schleife über jedes Parameterpaar
 for (i in seq_along(param_pairs)) {
   # Aktualisieren des Suchraums für das aktuelle Parameterpaar
   search_space <- ParamSet$new(params = param_pairs[[i]])
   
   # Define the resampling strategy
-  resampling <- rsmp("cv", folds = 2)
+  resampling <- rsmp("cv", folds = 5)
   
   # Define the tuning instance
   instance <- TuningInstanceSingleCrit$new(
@@ -175,8 +183,11 @@ for (i in seq_along(param_pairs)) {
     resampling = resampling,
     measure = msr("classif.acc"),
     search_space = search_space,
-    terminator = trm("evals", n_evals = 2)  # Adjust the number of evaluations
+    terminator = trm("evals", n_evals = 10)  # Adjust the number of evaluations
   )
+  
+  # Set the seed before running the tuning
+  set.seed(seed)
   
   # Run the tuning
   tuner <- tnr("random_search")
@@ -189,12 +200,25 @@ for (i in seq_along(param_pairs)) {
   
   # Print the best hyperparameters and their score
   cat("Best hyperparameters for pair", i, ":\n")
-  print(best_result)
+  print(best_result[[1]])
   cat("Best score (accuracy) for pair", i, ":\n")
   print(best_score)
   
+  # Konvertiere best_result in ein benanntes Listenelement für die Tabelle
+  result_entry <- list(
+    "Parameter" = names(best_result[[1]][1]),
+    "Wert" = best_result[[1]][1],
+    "2. Parameter" = names(best_result[[1]][2]),
+    "2. Wert" = best_result[[1]][2],
+    "Best accuracy" = best_score
+  )
+  
+  # Ergebnis zur Liste hinzufügen
+  results_list[[i]] <- result_entry
+  
   # Convert best_result to a named list for the learner
   best_result_list <- as.list(setNames(best_result$value, best_result$param))
+  
   
   # Train the model with the best hyperparameters
   learner$param_set$values <- best_result_list
@@ -211,14 +235,37 @@ for (i in seq_along(param_pairs)) {
   print(proc.time() - ptm)
 }
 ```
+```{r}
+
+print(results_list)
+
+```
 
 
+# Print the best hyperparameters and their score
+  cat("Best hyperparameters for pair", i, ":\n")
+  print(results_table)
+  #cat("Best score (accuracy) for pair", i, ":\n")
+  #print(best_score)
+  
+  
 Tuning Ergebnisse visualisieren 2 Hyperparameter
 
 ```{r}
-# Ergebnisse extrahieren
-df <- as.data.frame(res$opt.path)
+# Installiere das Paket jsonlite, falls es noch nicht installiert ist
+install.packages("jsonlite")
 
+# Laden des Pakets
+library(jsonlite)
+
+# Speichern der Liste im JSON-Format
+write_json(results_list, path = "results_list.json", pretty = TRUE)
+
+# Laden der Liste aus der JSON-Datei
+loaded_results_list <- fromJSON("results_list.json")
+
+# Überprüfen, ob die geladene Liste korrekt ist
+print(loaded_results_list)
 
 ```
 
