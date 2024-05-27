@@ -1,10 +1,13 @@
-df <- as.data.frame(res$opt.path)
-
-plot(df$min.node.size, df$mmce.test.mean, 
+```{r}
+# Ergebnisse extrahieren
+df <- as.data.table(instance$archive)
+df
+plot(df$max.depth, df$classif.acc,
      type = "b",               # b für punktierte Linie mit Punkten
      xlab = "min.node.size",   # Beschriftung der x-Achse
-     ylab = "MMCE",             # Beschriftung der y-Achse
-     main = "MMCE vs. min.node.size",  # Haupttitel des Diagramms
+     ylab = "ACC",             # Beschriftung der y-Achse
+     main = "ACC vs. min.node.size",  # Haupttitel des Diagramms
      pch = 16,                 # Punktsymbol
      col = "blue"           # Farbe der Linie und Punkte
 )
+```
