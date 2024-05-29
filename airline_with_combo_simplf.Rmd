@@ -1,0 +1,324 @@
+---
+title: Airline Passenger Satisfaction Parameter Tuning
+output: html_document
+
+Zu Beginn müssen vermutlich alle Pakete installiert werden, welche im folgenden
+chunk auskommentiert sind.
+---
+
+# Title: Airline Passenger Satisfaction Parameter Tuning
+
+# Authors: Maike Hucht, Jule Lang, Michael Prendota, Deniz Terzioglu
+
+# Date: April 22, 2024
+
+In this notebook, we'll explore a dataset containing information about airline passengers and their satisfaction levels. We'll preprocess the data, build a machine learning model and evaluate the performance.
+
+## Setup
+
+```{r}
+
+#install.packages("mlr3learners")
+#install.packages("paradox")
+#install.packages("data.table")
+#install.packages("tidyverse")
+#install.packages("tidyverse")
+#install.packages("mlr3")
+#install.packages("caret")
+#install.packages("ggplot2")
+#install.packages("plotly")
+#install.packages("mlr3misc")
+#install.packages("mlr3tuning")
+
+# Load libraries
+library(purrr)
+library(mlr3misc)
+library(mlr3verse)
+library(mlr3tuning)
+library(tidyverse)
+library(mlr3learners)
+library(paradox)
+library(data.table)
+ptm <- proc.time()
+library(ranger)
+library(mlr3)
+library(caret)
+library(ggplot2)
+library(plotly)
+```
+
+## Data Loading and Preprocessing
+
+Importing the data
+
+```{r}
+data <- read.csv('./data/train.csv')
+head(data)
+summary(data)
+```
+
+```{r}
+# Print the column names of the dataset
+print(colnames(data))
+```
+
+Removing unwanted columns
+
+```{r}
+data <- data %>% 
+  select(-id)
+```
+
+Reporting the amount of missing data
+
+```{r}
+# Anzahl der NA-Werte in der Spalte 'Arrival.Delay.in.Minutes' vor der Mutation
+na_count <- sum(is.na(data$`Arrival.Delay.in.Minutes`))
+print(na_count)
+```
+
+Handling missing values
+
+```{r}
+# Replace NA values with the mean of the column "Arrival.Delay.in.Minutes"
+data <- data %>%
+  mutate(`Arrival.Delay.in.Minutes` = if_else(
+    is.na(`Arrival.Delay.in.Minutes`), 
+    mean(`Arrival.Delay.in.Minutes`, na.rm = TRUE), 
+    `Arrival.Delay.in.Minutes`
+  ))
+```
+
+Encoding categorical variables
+
+```{r}
+data$Gender <- ifelse(data$Gender == 'Male', 1, 0)
+data$`Customer.Type` <- ifelse(data$`Customer.Type` == 'Loyal Customer', 1, 0)  # Correct column name
+data$`Type.of.Travel` <- ifelse(data$`Type.of.Travel` == 'Business travel', 1, 0)  # Correct column name
+data$Class <- ifelse(data$Class == 'Business', 1, ifelse(data$Class == 'Eco', 0, -1))
+data$satisfaction <- ifelse(data$satisfaction == 'neutral or dissatisfied', 1, 0)
+data$satisfaction <- factor(data$satisfaction)
+train_data <- data
+```
+
+Applying the same steps to test data
+
+```{r}
+test_data <- read.csv('./data/test.csv')
+
+test_data <- test_data %>% 
+  select(-id)
+
+test_data <- test_data %>%
+  mutate(`Arrival.Delay.in.Minutes` = if_else(
+    is.na(`Arrival.Delay.in.Minutes`), 
+    mean(`Arrival.Delay.in.Minutes`, na.rm = TRUE), 
+    `Arrival.Delay.in.Minutes`
+  ))
+test_data$Gender <- ifelse(test_data$Gender == 'Male', 1, 0)
+test_data$`Customer.Type` <- ifelse(test_data$`Customer.Type` == 'Loyal Customer', 1, 0)  # Correct column name
+test_data$`Type.of.Travel` <- ifelse(test_data$`Type.of.Travel` == 'Business travel', 1, 0)  # Correct column name
+test_data$Class <- ifelse(test_data$Class == 'Business', 1, ifelse(test_data$Class == 'Eco', 0, -1))
+test_data$satisfaction <- ifelse(test_data$satisfaction == 'neutral or dissatisfied', 1, 0)
+
+
+x_train <- train_data %>% 
+  select(-satisfaction)
+y_train <- train_data$satisfaction
+
+x_test <- test_data %>% 
+  select(-satisfaction)
+y_test <- factor(test_data$satisfaction)
+
+# Convert to data.table
+train_data <- as.data.table(data)
+
+
+```
+
+## Model Building and Tuning on data
+
+
+```{r}
+# Define the task
+task <- TaskClassif$new(id = "train_data", backend = train_data, target = "satisfaction")
+
+# Define the learner
+learner <- lrn("classif.ranger")
+
+# Liste der Parameter
+parameters <- list(
+  ParamInt$new("mtry", lower = 1, upper = 13), #Deniz
+  ParamInt$new("num.trees", lower = 10, upper = 250) #Deniz
+)
+
+# Define a seed for reproducibility
+seed <- 123
+
+# Leere Liste zum Speichern der Ergebnisse
+results_list <- list()
+
+
+# Aktualisieren des Suchraums für das aktuelle Parameterpaar
+search_space <- ParamSet$new(params = parameters)
+
+# Define the resampling strategy
+resampling <- rsmp("cv", folds = 5)
+
+# Define the tuning instance
+instance <- TuningInstanceSingleCrit$new(
+  task = task,
+  learner = learner,
+  resampling = resampling,
+  measure = msr("classif.acc"),
+  search_space = search_space,
+  terminator = trm("evals", n_evals = 10)  # Adjust the number of evaluations
+)
+
+# Set the seed before running the tuning
+set.seed(seed)
+
+# Run the tuning
+tuner <- tnr("random_search")
+res <- tuner$optimize(instance)
+
+autoplot(instance, type = "surface")
+
+# Retrieve the results
+best_result <- as.list(res$x)
+best_score <- res$classif.acc
+
+# Print the best hyperparameters and their score
+cat("Best hyperparameters for pair", 1, ":\n")
+print(best_result[[1]])
+cat("Best score (accuracy) for pair", 1, ":\n")
+print(best_score)
+
+# Konvertiere best_result in ein benanntes Listenelement für die Tabelle
+result_entry <- list(
+  "Parameter" = names(best_result[[1]][1]),
+  "Wert" = best_result[[1]][1],
+  "2. Parameter" = names(best_result[[1]][2]),
+  "2. Wert" = best_result[[1]][2],
+  "Best accuracy" = best_score
+)
+
+# Ergebnis zur Liste hinzufügen
+results_list[[1]] <- result_entry
+
+# Convert best_result to a named list for the learner
+best_result_list <- as.list(setNames(best_result$value, best_result$param))
+
+
+# Train the model with the best hyperparameters
+learner$param_set$values <- best_result_list
+Ranger_model <- learner$train(task)
+
+# Print the final trained learner
+print(Ranger_model)
+
+# Additionally, print the learner's parameters to verify
+cat("Learner's parameters for pair", 1, ":\n")
+print(learner$param_set$values)
+
+# Print the execution time
+print(proc.time() - ptm)
+
+```
+```{r}
+
+print(results_list)
+
+```
+
+
+# Print the best hyperparameters and their score
+  cat("Best hyperparameters for pair", i, ":\n")
+  print(results_table)
+  #cat("Best score (accuracy) for pair", i, ":\n")
+  #print(best_score)
+  
+  
+Tuning Ergebnisse visualisieren 2 Hyperparameter
+
+```{r}
+# Installiere das Paket jsonlite, falls es noch nicht installiert ist
+install.packages("jsonlite")
+
+# Laden des Pakets
+library(jsonlite)
+
+# Speichern der Liste im JSON-Format
+write_json(results_list, path = "results_list.json", pretty = TRUE)
+
+# Laden der Liste aus der JSON-Datei
+loaded_results_list <- fromJSON("results_list.json")
+
+# Überprüfen, ob die geladene Liste korrekt ist
+print(loaded_results_list)
+
+```
+
+# Train on dataset (using best hyperparameters)
+# Bis hierhin getestet
+
+
+Predict for our test set
+
+```{r}
+Ranger_pred = getPredictionResponse(predict(Ranger_model, newdata = x_test))
+Ranger_pred
+```
+
+```{r}
+# Convert both to factors ensuring they have the same levels
+levels_set <- union(levels(y_test), levels(Ranger_pred))
+
+y_test <- factor(y_test, levels = levels_set)
+task.pred <- factor(Ranger_pred, levels = levels_set)
+```
+
+Evaluating model performance
+
+```{r}
+acc_ranger <- confusionMatrix(Ranger_pred, y_test)$overall['Accuracy']
+acc_ranger
+```
+
+```{r}
+precision_ranger <- confusionMatrix(Ranger_pred, y_test)$byClass['Precision']
+precision_ranger
+```
+
+```{r}
+recall <- confusionMatrix(Ranger_pred, y_test)$byClass['Recall']
+
+recall
+```
+
+```{r}
+f1_score <- confusionMatrix(Ranger_pred, y_test)$byClass['F1']
+f1_score
+```
+
+```{r}
+sensitivity <- confusionMatrix(Ranger_pred, y_test)$byClass['Sensitivity']
+sensitivity
+```
+
+```{r}
+specificity <- confusionMatrix(Ranger_pred, y_test)$byClass['Specificity']
+specificity
+```
+
+```{r}
+kappa <- confusionMatrix(Ranger_pred, y_test)$overall['Kappa']
+kappa
+```
+
+```{r}
+auc <- confusionMatrix(Ranger_pred, y_test)$byClass['AUC']
+auc
+```
+
+

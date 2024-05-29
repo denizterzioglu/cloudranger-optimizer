@@ -152,10 +152,8 @@ parameters <- list(
   ParamDbl$new("sample.fraction", lower = 0.1, upper = 1), # Jule
   ParamInt$new("mtry", lower = 1, upper = 13), #Deniz
   ParamInt$new("num.trees", lower = 10, upper = 250), #Deniz
-  ParamFct$new("respect.unordered.factors", levels = c("ignore", "order", "partition")), #Michael
   ParamLgl$new("replace"), #Michael
-  ParamInt$new("min.node.size", lower = 1, upper = 100), #Maike
-  ParamFct$new("importance", levels = c("none", "permutation", "impurity")) #Maike
+  ParamInt$new("min.node.size", lower = 1, upper = 100) #Maike
 )
 
 # Alle möglichen Kombinationen von Parameterpaaren erstellen
@@ -174,7 +172,7 @@ for (i in seq_along(param_pairs)) {
   search_space <- ParamSet$new(params = param_pairs[[i]])
   
   # Define the resampling strategy
-  resampling <- rsmp("cv", folds = 5)
+  resampling <- rsmp("cv", folds = 2)
   
   # Define the tuning instance
   instance <- TuningInstanceSingleCrit$new(
@@ -183,7 +181,7 @@ for (i in seq_along(param_pairs)) {
     resampling = resampling,
     measure = msr("classif.acc"),
     search_space = search_space,
-    terminator = trm("evals", n_evals = 10)  # Adjust the number of evaluations
+    terminator = trm("evals", n_evals = 2)  # Adjust the number of evaluations
   )
   
   # Set the seed before running the tuning
@@ -193,6 +191,7 @@ for (i in seq_along(param_pairs)) {
   tuner <- tnr("random_search")
   res <- tuner$optimize(instance)
   
+  autoplot(instance, type = "surface")
 
   # Retrieve the results
   best_result <- as.list(res$x)

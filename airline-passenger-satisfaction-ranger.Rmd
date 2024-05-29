@@ -109,13 +109,18 @@ task <- makeClassifTask(id = "train_data",
 learner <- makeLearner("classif.ranger")
 
 # Choose resampling strategy and define grid
-rdesc <- makeResampleDesc("CV", iters = 5)
+rdesc <- makeResampleDesc("CV", iters = 2)
+
 ps <- makeParamSet(makeIntegerParam("mtry", 1, 13),
-                   makeIntegerParam("num.trees", 10, 250))
+                   makeIntegerParam("num.trees", 2, 202))
 
 # Tune
 res = tuneParams(learner, task, rdesc, par.set = ps,
            control = makeTuneControlRandom())
+
+data = generateHyperParsEffectData(res)
+plt = plotHyperParsEffect(data, x = "num.trees", y= "mtry", z = "mmce.test.mean",  plot.type = "heatmap")
+plt + ylab("Misclassification Error")
 
 # Train on  dataset (using best hyperparameters)
 lrn = setHyperPars(makeLearner("classif.ranger"), par.vals = res$x)
