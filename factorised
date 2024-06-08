@@ -1,0 +1,56 @@
+Encoding categorical variables
+
+```{r}
+data$Gender <- ifelse(data$Gender == 'Male', 1, 0)
+data$Gender <- factor(data$Gender)
+data$`Customer.Type` <- ifelse(data$`Customer.Type` == 'Loyal Customer', 1, 0)
+data$`Customer.Type` <- factor(data$`Customer.Type`)
+data$`Type.of.Travel` <- ifelse(data$`Type.of.Travel` == 'Business travel', 1, 0)
+data$`Type.of.Travel` <- factor(data$`Type.of.Travel`)
+data$Class <- ifelse(data$Class == 'Business', 1, ifelse(data$Class == 'Eco', 0, -1))
+data$Class <- factor(data$Class)
+data$satisfaction <- ifelse(data$satisfaction == 'neutral or dissatisfied', 1, 0)
+data$satisfaction <- factor(data$satisfaction)
+train_data <- data
+```
+
+Applying the same steps to test data
+
+```{r}
+test_data <- read.csv('./data/test.csv')
+
+test_data <- test_data %>% 
+  select(-id)
+
+test_data <- test_data %>%
+  mutate(`Arrival.Delay.in.Minutes` = if_else(
+    is.na(`Arrival.Delay.in.Minutes`), 
+    mean(`Arrival.Delay.in.Minutes`, na.rm = TRUE), 
+    `Arrival.Delay.in.Minutes`
+  ))
+test_data$Gender <- ifelse(test_data$Gender == 'Male', 1, 0)
+test_data$Gender <- factor(test_data$Gender)
+test_data$`Customer.Type` <- ifelse(test_data$`Customer.Type` == 'Loyal Customer', 1, 0)
+test_data$`Customer.Type` <- factor(test_data$`Customer.Type`)
+test_data$`Type.of.Travel` <- ifelse(test_data$`Type.of.Travel` == 'Business travel', 1, 0)
+test_data$`Type.of.Travel` <- factor(test_data$`Type.of.Travel`)
+test_data$Class <- ifelse(test_data$Class == 'Business', 1, ifelse(data$Class == 'Eco', 0, -1))
+test_data$Class <- factor(test_data$Class)
+test_data$satisfaction <- ifelse(data$satisfaction == 'neutral or dissatisfied', 1, 0)
+test_data$satisfaction <- factor(data$satisfaction)
+train_data <- data
+
+
+x_train <- train_data %>% 
+  select(-satisfaction)
+y_train <- train_data$satisfaction
+
+x_test <- test_data %>% 
+  select(-satisfaction)
+y_test <- factor(test_data$satisfaction)
+
+# Convert to data.table
+train_data <- as.data.table(data)
+
+
+```
