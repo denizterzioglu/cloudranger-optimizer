@@ -36,10 +36,8 @@ test_data$`Type.of.Travel` <- ifelse(test_data$`Type.of.Travel` == 'Business tra
 test_data$`Type.of.Travel` <- factor(test_data$`Type.of.Travel`)
 test_data$Class <- ifelse(test_data$Class == 'Business', 1, ifelse(data$Class == 'Eco', 0, -1))
 test_data$Class <- factor(test_data$Class)
-test_data$satisfaction <- ifelse(data$satisfaction == 'neutral or dissatisfied', 1, 0)
-test_data$satisfaction <- factor(data$satisfaction)
-train_data <- data
-
+test_data$satisfaction <- ifelse(test_data$satisfaction == 'neutral or dissatisfied', 1, 0)
+test_data$satisfaction <- factor(test_data$satisfaction)
 
 x_train <- train_data %>% 
   select(-satisfaction)
