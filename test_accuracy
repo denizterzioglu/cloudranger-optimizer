@@ -1,0 +1,75 @@
+# Bis hierhin getestet
+
+
+Predict for our test set
+
+```{r}
+# Convert x_test to data.table if necessary
+x_test <- as.data.table(x_test)
+
+# Make predictions using the trained model on the test data
+prediction <- Ranger_model$predict_newdata(newdata = x_test)
+
+# Extract the predicted responses
+Ranger_pred <- prediction$response
+
+# Print the predictions
+print(Ranger_pred)
+
+```
+
+```{r}
+# Make predictions using the trained model on the test data
+prediction <- Ranger_model$predict_newdata(newdata = x_test)
+
+# Extract the predicted responses
+Ranger_pred <- prediction$response
+
+# Convert both to factors ensuring they have the same levels
+levels_set <- union(levels(y_test), levels(Ranger_pred))
+
+y_test <- factor(y_test, levels = levels_set)
+task.pred <- factor(Ranger_pred, levels = levels_set)
+
+```
+
+Evaluating model performance
+```{r}
+conf_matrix <- confusionMatrix(task.pred, y_test)
+```
+
+
+```{r}
+acc_ranger <- conf_matrix$overall['Accuracy']
+acc_ranger
+```
+
+```{r}
+precision_ranger <- conf_matrix$byClass['Precision']
+precision_ranger
+```
+
+```{r}
+recall <- conf_matrix$byClass['Recall']
+recall
+```
+
+```{r}
+f1_score <- conf_matrix$byClass['F1']
+f1_score
+```
+
+```{r}
+sensitivity <- conf_matrix$byClass['Sensitivity']
+sensitivity
+```
+
+```{r}
+specificity <- conf_matrix$byClass['Specificity']
+specificity
+```
+
+```{r}
+kappa <- conf_matrix$overall['Kappa']
+kappa
+```
